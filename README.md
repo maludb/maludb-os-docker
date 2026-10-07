@@ -69,7 +69,10 @@ config is re-rendered from env + persisted secrets, services re-enabled, apps re
 ## Operations
 
 - **Status**: `docker exec bos systemctl status` / `docker exec bos cat /etc/business-os/install-report.txt`
-- **Provider keys later**: `docker exec -it bos bash`, then `docs/deploy/set-provider-key.sh` per its usage.
+- **Provider keys later**: `sudo ./bos-set-keys.sh` — prompts for each key (Enter keeps the
+  current value, `-` clears it; `--*-key-file` flags for automation), persists them in `bos.env`
+  so container recreates keep them, applies them live, and restarts the agent runner when a
+  provider key changed.
 - **Add HR/Projects later**: `docker exec bos php /var/www/bin/app_install.php apply https://github.com/maludb/maludb-os-hr.git --by <admin> --domain <domain> --scheme https --hire-agents --grant-standing-departments`
 - **Upgrade**: rebuild with a new `OS_CORE_REF` (`OS_CORE_REF=<tag> docker compose build`), then
   `docker compose up -d`. Volumes keep secrets and config; bos-init reconciles.

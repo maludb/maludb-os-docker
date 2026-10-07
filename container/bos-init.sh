@@ -84,9 +84,17 @@ install -d -o www-data -g www-data -m 750 /var/www/storage
 install -d -o bos-runner -g bos-agent -m 2770 /var/lib/business-os /var/lib/business-os/agents
 install -d -m 755 /srv/apps
 
-# Loopback names (docker rewrites /etc/hosts at every start)
-for n in "$DOMAIN" "www.$DOMAIN" "os.$DOMAIN" "app.$DOMAIN" "helpdesk.$DOMAIN" "spaces.$DOMAIN"; do
-    grep -qE "[[:space:]]$n(\$|[[:space:]])" /etc/hosts || echo "127.0.0.1 $n" >> /etc/hosts
+# Loopback names (docker rewrites /etc/hosts at every start). The kernel's own names are only ever dialed by a browser,
+# so a loopback line is harmless. An APPLICATION's name is dialed from inside: the agent runner hands each agent the
+# endpoint's registered URL (<SCHEME>://<label>.<domain>/mcp/...) and the actions server resolves entities through it.
+# Under SCHEME=https a loopback line sends those calls to 127.0.0.1:443, where nothing listens — the name must resolve
+# through the owner's DNS to the TLS proxy in front. So application names get a loopback line only for plain http.
+APP_NAMES=("helpdesk.$DOMAIN" "spaces.$DOMAIN")
+hosts_add()   { grep -qE "[[:space:]]$1(\$|[[:space:]])" /etc/hosts || echo "127.0.0.1 $1" >> /etc/hosts; }
+hosts_strip() { sed -i "/^127\.0\.0\.1[[:space:]]\+$1\$/d" /etc/hosts; }
+for n in "$DOMAIN" "www.$DOMAIN" "os.$DOMAIN" "app.$DOMAIN"; do hosts_add "$n"; done
+for n in "${APP_NAMES[@]}"; do
+    if [ "$SCHEME" = https ]; then hosts_strip "$n"; else hosts_add "$n"; fi
 done
 
 # Wait for the host's PostgreSQL and MaluDB API
@@ -267,7 +275,11 @@ step_hire_jev()       { cd /var/www && runuser -u www-data -- php bin/hire_jev_p
 
 once memory-schema   step_memory_schema
 once create-db       step_create_db
-once migrations      step_migrations
+# Migrations run at EVERY boot, not once: an upgraded image carries new db/*.sql, and step_migrations already skips
+# every file recorded in $STATE/migrations-applied (the once-marker of earlier images is dropped).
+rm -f "$STATE/migrations"
+echo "== migrations (the files not yet in $STATE/migrations-applied, in order)"
+step_migrations || die "step 'migrations' failed"
 once role-passwords  step_role_passwords
 once php-check       step_php_check
 
@@ -328,6 +340,9 @@ for app in helpdesk spaces; do
         app_apply "$app" || die "app_install re-apply failed for $app"
         systemctl restart $(systemctl --plain --no-legend list-units --all "${app}-*.service" | awk '{print $1}') 2>/dev/null || true
     fi
+    # The installer's dns step adds a loopback line while the owner's DNS does not exist yet; under https that line would
+    # shadow the name for the kernel's own calls (see the /etc/hosts note in phase A) — take it out again.
+    [ "$SCHEME" = https ] && hosts_strip "$app.$DOMAIN"
 done
 
 echo "== verification (install.md §13)"

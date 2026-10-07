@@ -113,15 +113,16 @@ migrate_new() { # migrate_new KEY — files not in the ledger, in order, through
             echo \"\$f\" >> $LEDGER_DIR/$1; n=\$((n+1))
         done; echo \"-- $1: \$n new migration(s) applied to $db\""
 }
-hosts_note() { # the loopback line the installer adds when the name does not resolve breaks https calls from inside
+hosts_fix() { # the loopback line the installer adds while the name does not resolve shadows it for the kernel's https calls
     [ -n "${1:-}" ] || return 0
     local fqdn="$1.$DOMAIN"
-    if [ "$SCHEME" = https ] && dxq "grep -qE '[[:space:]]$fqdn(\$|[[:space:]])' /etc/hosts"; then
+    [ "$SCHEME" = https ] || return 0
+    if dxq "grep -qE '^127\\.0\\.0\\.1[[:space:]]+$fqdn\$' /etc/hosts"; then
+        dxq "sed -i '/^127\\.0\\.0\\.1[[:space:]]\\+$fqdn\$/d' /etc/hosts"
         cat <<EOT
-NOTE: the container's /etc/hosts sends $fqdn to 127.0.0.1. The kernel's agents and its entity resolver dial
-      https://$fqdn/mcp/... — inside the container that is 127.0.0.1:443, where nothing listens. Once the owner's
-      DNS A record and TLS proxy exist, remove the line (docker rewrites /etc/hosts at every restart anyway):
-          docker exec bos sed -i '/[[:space:]]$fqdn\$/d' /etc/hosts
+NOTE: removed the loopback /etc/hosts line for $fqdn inside the container. The kernel's agents and its entity resolver
+      dial https://$fqdn/mcp/... — a loopback line sends that to 127.0.0.1:443, where nothing listens. The name must
+      resolve through the owner's DNS A record to the TLS proxy in front; until it does, agents cannot reach this application.
 EOT
     fi
 }
@@ -147,8 +148,6 @@ plan)
     [ -n "$ARG" ] || die "usage: bos-app.sh plan <source> [--ref TAG]"
     SRC=$(resolve_source "$ARG") || exit 1
     installer "$SRC" plan ${EXTRA[@]+"${EXTRA[@]}"}; rc=$?
-    KEY=$(key_from_output)
-    [ -n "$KEY" ] && hosts_note "$(manifest_value "$KEY" .vhost.label)"
     exit $rc;;
 apply)
     [ -n "$ARG" ] || die "usage: bos-app.sh apply <source> [--ref TAG] [--hire-agents] [--grant-standing-departments]"
@@ -167,7 +166,7 @@ apply)
     echo "== check"
     health "$KEY" || note "$KEY: health is not 200 yet — bos-app.sh logs $KEY"
     LABEL=$(manifest_value "$KEY" .vhost.label); LABEL=${LABEL:-$KEY}
-    hosts_note "$LABEL"
+    hosts_fix "$LABEL"
     cat <<EOT
 Installed: $KEY at /srv/apps/$KEY (bos-srv-apps volume), $SCHEME://$LABEL.$DOMAIN
 The owner's: a DNS A record for $LABEL.$DOMAIN and TLS at the proxy in front; grants beyond those named;

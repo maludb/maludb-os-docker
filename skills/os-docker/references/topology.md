@@ -43,9 +43,10 @@ Written from `maludb-os-docker` at commit 92e5322 (2026-10-07: `Dockerfile`, `do
 - Names: `<domain>` and `www.` (the landing page), `app.<domain>` (sign-in, the launcher), `os.<domain>` (super-admins), and one
   `<label>.<domain>` per application. All are vhosts on the container's `:80`; **TLS terminates at the owner's proxy in front**; the
   registered URLs carry `SCHEME` (`https` by default — `bos.env`).
-- At every boot bos-init writes `127.0.0.1 <name>` lines into the container's `/etc/hosts` for the bare name, `www.`, `os.`, `app.`,
-  `helpdesk.` and `spaces.` (docker rewrites the file at each start). The kernel's installer adds such a line for any application
-  whose name does not resolve at `apply`; it is lost at the next restart.
+- At every boot bos-init writes `127.0.0.1 <name>` lines into the container's `/etc/hosts` for the bare name, `www.`, `os.` and `app.`
+  (docker rewrites the file at each start) — names only a browser dials. An application's name gets one only under `SCHEME=http`;
+  under `https` bos-init strips it (also after each apply, since the kernel's installer adds one for a name that does not resolve
+  yet), and `bos-app.sh apply`/`update` strip it for any other application. Fixed 2026-10-07; an image built earlier still writes them.
 
 ## Who dials whom (this is why DNS matters)
 
@@ -62,7 +63,8 @@ Written from `maludb-os-docker` at commit 92e5322 (2026-10-07: `Dockerfile`, `do
 "By name" with `SCHEME=https` means: with the owner's DNS A record and TLS proxy in place, the call leaves the container, reaches the
 proxy, and comes back to `:80` — it works. With a loopback line in `/etc/hosts` for that name, the call goes to `127.0.0.1:443`
 inside the container, where nothing listens — it fails. So **agents' tool calls to an application work only once the owner's DNS
-and TLS exist and no loopback line shadows the name** (`troubleshooting.md`, "agents cannot reach an application").
+and TLS exist**; bos-init and bos-app.sh keep loopback lines off application names under `https` (`troubleshooting.md`, "agents
+cannot reach an application").
 
 ## The boot sequence (`bos-init`, every start of the container)
 
@@ -70,16 +72,17 @@ and TLS exist and no loopback line shadows the name** (`troubleshooting.md`, "ag
   PostgreSQL and MaluDB API; secrets loaded or generated under `/etc/business-os/secrets/`; the MaluDB token reused or minted;
   `config/.env`, `web.env.local`, `runner.env` rendered (`set_kv` on the known keys — a key the kernel adds later is NOT merged from
   `.env.example`); the Apache site, the landing page and the web drop-in rendered from `docs/deploy/` with the domain filled in.
-- **Phase B, once (markers in `init-state/`):** memory schema, `CREATE DATABASE certstudy`, **all migrations** (recorded per file in
-  `migrations-applied`), role passwords, a PHP check; services enabled and started; the super-admin, the model registry row, cron,
+- **Phase B (markers in `init-state/`, once each — except the migrations):** memory schema, `CREATE DATABASE certstudy`, the
+  **migrations not yet in `migrations-applied`, at every boot**, role passwords, a PHP check; services enabled and started; the super-admin, the model registry row, cron,
   the Installer and the JEV prompt writer hired; a model probe when `ANTHROPIC_API_KEY` is set.
 - **Phase C, every boot:** `app_install.php apply` for Help Desk and Spaces from `/opt/app-cache` (an installed copy at `/srv/apps/<key>`
   is used as it is — "code: done" — so a pull you made there survives), then `fix_app_env` for those two only, then the verification
   battery and `install-report.txt`.
 
 Consequences worth knowing:
-- An image with **new kernel migrations** does not get them applied by bos-init: the `migrations` step is behind a once-marker
-  (`once migrations step_migrations`). See `os-docker-kernel` for how to apply them.
+- An image with **new kernel migrations** gets them applied at the next boot: the migrations step runs every boot and skips what
+  `migrations-applied` lists (fixed 2026-10-07; before that it was behind a once-marker — on an older image, `os-docker-kernel` says
+  how to reset it).
 - `bos-init` reconciles Help Desk and Spaces every boot; **any other application** is reconciled only when you run `apply` again
   (`bos-app.sh update <key>` does).
 - `app_install.php apply` on an existing database **does not run new migrations** ("an upgrade applies the new ones by hand, in

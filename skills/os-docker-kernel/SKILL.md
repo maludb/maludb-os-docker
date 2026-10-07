@@ -24,15 +24,10 @@ There is no live kernel code to edit: **a kernel change is a commit in `maludb-o
    For a fleet, tag and push a release instead (`README.md`, "Distribution"): tags pin the kernel ref and the date; never a bare `latest`.
 3. **Roll it out:** `docker compose up -d` (or `BOS_IMAGE_TAG=<tag> docker compose up -d` for a pulled release). Watch
    `docker exec bos journalctl -u bos-init -f` to `BOS-INIT-OK`; read `docker exec bos cat /etc/business-os/install-report.txt`.
-4. **Apply the kernel's new migrations — bos-init will not.** The migrations step is behind a once-marker
-   (`once migrations step_migrations` in `container/bos-init.sh`): on an upgraded image it says "already done" and the new
-   `db/*.sql` stay unapplied until:
-   ```bash
-   docker exec bos rm -f /etc/business-os/init-state/migrations && docker exec bos systemctl restart bos-init
-   ```
-   Safe: the step skips every file listed in `init-state/migrations-applied`, applies the rest in order with `ON_ERROR_STOP`, records
-   each, and the marker returns. Check first what is pending (`troubleshooting.md`, "after a kernel image upgrade"). A fix in
-   maludb-os-docker (run the step every boot; it is already resumable) would remove this step — propose it.
+4. **The kernel's new migrations** are applied by bos-init at that boot: the step runs every boot, skips every file listed in
+   `init-state/migrations-applied`, applies the rest in order with `ON_ERROR_STOP` and records each (since 2026-10-07). Check the
+   log for `== migrations` and the files it names. An image built before that date applied them once only, behind the
+   `init-state/migrations` marker: `docker exec bos rm -f /etc/business-os/init-state/migrations && docker exec bos systemctl restart bos-init`.
 5. **A new `config/.env` key** the change introduces: bos-init writes only the keys it knows (`set_kv` list in `container/bos-init.sh`)
    and copies `.env.example` only on the first boot. Add the key to `container/bos-init.sh` (from `bos.env` or a generated secret) in the
    same change, or document the by-hand line; the same for `runner.env` and `web.env.local`.

@@ -81,12 +81,15 @@ config is re-rendered from env + persisted secrets, services re-enabled, apps re
   The raw form is `docker exec bos php /var/www/bin/app_install.php apply <source> --by <admin> --domain <domain> --scheme https …`,
   followed by the fixes by hand (the plugin's `commands.md` lists them).
 - **Upgrade**: rebuild with a new `OS_CORE_REF` (`OS_CORE_REF=<tag> docker compose build`), then
-  `docker compose up -d`. Volumes keep secrets and config; bos-init reconciles.
+  `docker compose up -d`. Volumes keep secrets and config; bos-init reconciles and applies the kernel's new
+  migrations (every boot, skipping what `init-state/migrations-applied` lists).
 - **Backups** (owner's duty): `pg_dump -Fc` on the host for `certstudy`, the app databases and the
   tenant memory database, plus the `bos-etc`/`bos-config` volumes (they hold the encryption keys —
   losing SECRETS_KEY/APP_TOTP_KEY makes encrypted data unreadable).
 - **TLS/DNS**: the container serves plain :80 vhosts (`<name>.<domain>`); TLS terminates at the
-  proxy in front, DNS A records are the owner's.
+  proxy in front, DNS A records are the owner's. The kernel's agents dial an application's MCP at its registered
+  `https://<label>.<domain>/…`, so an application is reachable to agents only once its A record and the proxy exist;
+  bos-init keeps loopback `/etc/hosts` lines off application names under `https` for that reason.
 
 ## Developing with Claude Code — the `maludb-os-docker` plugin
 
@@ -103,10 +106,10 @@ Four skills, read by Claude Code when the work matches them:
 
 | Skill | Use it when | It says |
 |---|---|---|
-| `os-docker` | before any work on a dockerized install | the three layers — image (the kernel, disposable), volumes (secrets, `config/.env`, `/srv/apps`), host (PostgreSQL, `bos.env`) — and which a change lands in; every kernel command as `docker exec bos …`; the command book; symptoms and causes (`DB_HOST`, empty ports, the loopback `/etc/hosts` line that shadows an application's name under `https`, kernel migrations an image upgrade does not apply) |
+| `os-docker` | before any work on a dockerized install | the three layers — image (the kernel, disposable), volumes (secrets, `config/.env`, `/srv/apps`), host (PostgreSQL, `bos.env`) — and which a change lands in; every kernel command as `docker exec bos …`; the command book; symptoms and causes (`DB_HOST`, empty ports, the loopback `/etc/hosts` line that would shadow an application's name under `https`) |
 | `os-docker-new-app` | a new application for this install | build it in its own repository with `htmx-php-builder` + `maludb-os-integration`; what the manifest must declare for the container's installer (every port key, `port_env` on every MCP endpoint, `DB_HOST` from the env, `database.provision` for upgrades); where the proofs run (a bind-mounted checkout inside the container, `docker-compose.override.example.yml`); `bos-app.sh plan` → the owner's answers → `apply`; what stays the owner's (DNS, TLS, grants, hires) |
 | `os-docker-change-app` | a change to an installed application | the repository, never `/srv/apps/<key>`; an additive migration; `bos-app.sh update <key> [--ref]` — pull, new migrations, reconcile, restart; rollback by tag |
-| `os-docker-kernel` | a change to the kernel | a commit in `maludb-os-core`, an image built at that ref (`OS_CORE_REF`, or a fork via `OS_CORE_REPO`), `docker compose up -d`, the kernel migrations applied by resetting the once-marker, verification, rollback by tag |
+| `os-docker-kernel` | a change to the kernel | a commit in `maludb-os-core`, an image built at that ref (`OS_CORE_REF`, or a fork via `OS_CORE_REPO`), `docker compose up -d`, the kernel migrations applied by bos-init at that boot, verification, rollback by tag |
 
 The two plugins that govern the code itself still govern it here: `htmx-php-builder`
 (`github.com/maludb/maludb-os-htmx-php-guidelines`: how an application is built) and `maludb-os-integration`

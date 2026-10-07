@@ -92,9 +92,9 @@ OS_CORE_REF=main docker compose build                         # build here from 
 docker compose build --build-arg OS_CORE_REPO=https://github.com/<you>/maludb-os-core.git --build-arg OS_CORE_REF=my-branch
 docker compose up -d                                          # recreate on the new image; bos-init reconciles; volumes untouched
 docker exec bos journalctl -u bos-init -f                     # watch it; ends with BOS-INIT-OK
-# NEW KERNEL MIGRATIONS ARE NOT APPLIED BY bos-init (the step is behind a once-marker). After an upgrade that adds db/*.sql:
+# new kernel migrations are applied by bos-init at boot (since 2026-10-07: every boot, skipping init-state/migrations-applied);
+# an image built before that applied them once only — reset its marker, then restart bos-init:
 docker exec bos rm -f /etc/business-os/init-state/migrations && docker exec bos systemctl restart bos-init
-#   (safe: the step skips every file already listed in init-state/migrations-applied, applies the rest in order, re-marks)
 docker compose restart bos                                    # a plain restart (no image change): phases A and C run again
 docker compose down && docker compose up -d                   # recreate the container (never `down -v`)
 ```

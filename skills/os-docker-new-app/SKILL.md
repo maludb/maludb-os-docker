@@ -98,8 +98,8 @@ The installer's read-only plan is the last proof of every phase and runs only in
 - **Yours to check and report:** `sudo ./bos-app.sh status <key>` (units active, health 200, the plan all `done`); a real launch from
   `app.<domain>` once DNS exists; the application page in `os.<domain>` showing the endpoints, roles and sign-on paths; the kernel
   ids (application, endpoints); where the secrets are (the application's `config/.env` on `bos-srv-apps`), without their values.
-- **A loopback `/etc/hosts` line** the installer added because the name did not resolve yet shadows the name under `SCHEME=https`;
-  `bos-app.sh` prints the note and the one-line removal. Never add such a line yourself.
+- **A loopback `/etc/hosts` line** the installer added because the name did not resolve yet would shadow the name under `SCHEME=https`
+  (the kernel's agents dial `https://<label>.<domain>/mcp/…`); `bos-app.sh apply`/`update` remove it and say why. Never add such a line yourself.
 
 ## Non-negotiables (beyond os-docker's)
 

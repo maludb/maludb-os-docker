@@ -18,21 +18,22 @@ another cause on a given VM.
 
 ## Agents cannot reach an application (tool calls refused, "connection refused", entity resolution fails)
 - **Cause:** the harness dials the endpoint's registered URL, `https://<label>.<domain>/mcp/…` (`mcp/agent_runner/claude_render.py:39`);
-  inside the container that name either resolves through the owner's DNS to the proxy (works) or through a loopback line in
-  `/etc/hosts` to `127.0.0.1:443`, where nothing listens (fails). bos-init writes loopback lines for `helpdesk.` and `spaces.` at every
-  boot; the installer adds one for any name that does not resolve at `apply`.
+  inside the container that name either resolves through the owner's DNS to the proxy (works), does not resolve at all (the owner's
+  A record is missing), or resolves through a loopback line in `/etc/hosts` to `127.0.0.1:443`, where nothing listens. The kernel's
+  installer adds such a line for a name that does not resolve at `apply`; bos-init (for Help Desk and Spaces) and `bos-app.sh`
+  (for any application) strip it under `https` since 2026-10-07 — an image built before then writes it at every boot.
 - **Check:** `docker exec bos getent hosts <label>.<domain>` (127.0.0.1 = shadowed) and `docker exec bos curl -sS -o /dev/null -w '%{http_code}\n' https://<label>.<domain>/mcp/records`
-- **Fix:** the owner's A record and TLS proxy for the name; then remove the loopback line for this boot
-  (`docker exec bos sed -i '/[[:space:]]<label>.<domain>$/d' /etc/hosts`). For Help Desk and Spaces the line comes back at every boot
-  until `container/bos-init.sh` stops writing it under `SCHEME=https` — a change to maludb-os-docker, worth a pull request. Running the
-  install with `SCHEME=http` makes loopback work but registers plain-http URLs the browser will be sent to; not a fix.
+- **Fix:** the owner's A record and TLS proxy for the name. If a loopback line is there (an older image, or a raw `app_install.php
+  apply`), remove it: `docker exec bos sed -i '/[[:space:]]<label>.<domain>$/d' /etc/hosts`, or run `sudo ./bos-app.sh update <key>`.
+  Running the install with `SCHEME=http` makes loopback work but registers plain-http URLs the browser will be sent to; not a fix.
 
 ## After a kernel image upgrade a screen or tool fails on a missing column or table
-- **Cause:** the image carries new `db/*.sql` and bos-init did not apply them: `once migrations step_migrations` runs only while the
-  `init-state/migrations` marker is absent (`container/bos-init.sh`).
+- **Cause:** the image carries new `db/*.sql` and bos-init did not apply them. Since 2026-10-07 the migrations step runs at every boot
+  and applies what `init-state/migrations-applied` lacks; an image built before then ran it once, behind the `init-state/migrations`
+  marker. Or bos-init failed before reaching the step (`journalctl -u bos-init`).
 - **Check:** `docker exec bos bash -c 'ls /var/www/db/*.sql | xargs -n1 basename | sort > /tmp/have; sort /etc/business-os/init-state/migrations-applied > /tmp/done; comm -23 /tmp/have /tmp/done'`
-- **Fix:** `docker exec bos rm -f /etc/business-os/init-state/migrations && docker exec bos systemctl restart bos-init` — the step
-  skips what `migrations-applied` lists and applies the rest in order.
+- **Fix:** `docker exec bos systemctl restart bos-init` (a current image); on an older image first
+  `docker exec bos rm -f /etc/business-os/init-state/migrations`. The step skips what `migrations-applied` lists and applies the rest in order.
 
 ## `app_install.php` says "exists but holds no maludb-os.json — not overwriting"
 - **Cause:** `/srv/apps/<key>` exists on the volume from a failed or partial earlier attempt.

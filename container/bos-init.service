@@ -1,0 +1,19 @@
+[Unit]
+Description=Business OS installer/reconciler (dockerized docs/install.md §3–§13)
+Documentation=file:///var/www/docs/install-on-maludb-hosting.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Written by host-install.sh, bind-mounted read-only at /etc/bos.env — docker env vars do not
+# reach systemd units, so the config travels as a file.
+EnvironmentFile=/etc/bos.env
+ExecStart=/usr/local/sbin/bos-init
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=3600
+
+[Install]
+WantedBy=multi-user.target

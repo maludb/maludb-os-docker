@@ -1,0 +1,60 @@
+# MaluDB Business OS — dockerized kernel + Help Desk + Spaces.
+# Configured and launched by host-install.sh; do not `docker compose up` before it has
+# written /etc/business-os-docker/bos.env and prepared the host's PostgreSQL.
+name: business-os
+
+services:
+  bos:
+    # Distribution image; override the tag per rollout (BOS_IMAGE_TAG=v2026.10.08 docker compose pull).
+    # Developers build locally with host-install.sh --build (or: docker compose build).
+    image: ${BOS_IMAGE:-ghcr.io/maludb/maludb-business-os}:${BOS_IMAGE_TAG:-v2026.10.07}
+    build:
+      context: .
+      args:
+        OS_CORE_REF: ${OS_CORE_REF:-main}
+    container_name: bos
+    hostname: bos
+    # systemd is PID 1, and bos-agent-exec sandboxes agent runs with systemd-run
+    # (PrivateNetwork etc.) — both need full privileges. Single-tenant VM; tightening
+    # to a capability allowlist is a documented follow-up.
+    privileged: true
+    cgroup: host
+    restart: unless-stopped
+    stop_grace_period: 30s
+    tmpfs:
+      - /run
+      - /run/lock
+    ports:
+      - "80:80"
+    extra_hosts:
+      # The host VM, as seen from the pinned bosnet subnet: its gateway address.
+      # PostgreSQL 17 and the MaluDB API (:8000) answer there.
+      - "pg-host:172.30.0.1"
+    networks:
+      - bosnet
+    volumes:
+      # configuration from the host installer (read by bos-init.service as EnvironmentFile)
+      - /etc/business-os-docker/bos.env:/etc/bos.env:ro
+      # the tenant's original connection file, for audit — bos.env carries the parsed values
+      - /var/www/config/database.php:/host-config/database.php:ro
+      # mutable state — the image stays disposable
+      - bos-etc:/etc/business-os          # secrets, runner.env, web.env.local, admin password, init markers
+      - bos-config:/var/www/config        # config/.env (volume is seeded from the image's .env.example)
+      - bos-storage:/var/www/storage
+      - bos-srv-apps:/srv/apps            # Help Desk + Spaces checkouts
+      - bos-var-lib:/var/lib/business-os  # agent workspaces
+
+networks:
+  bosnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+
+volumes:
+  bos-etc:
+  bos-config:
+  bos-storage:
+  bos-srv-apps:
+  bos-var-lib:

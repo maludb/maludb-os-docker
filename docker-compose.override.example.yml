@@ -1,0 +1,17 @@
+# docker-compose.override.example.yml — a developer's additions to the bos container.
+#
+# Copy to docker-compose.override.yml (gitignored; docker compose merges it automatically), then
+# `docker compose up -d` recreates the container with the mount — bos-init reconciles at boot, nothing
+# on the volumes or in the host's PostgreSQL changes.
+#
+# The mount is a development checkout of ONE application (its own repository, a maludb-os.json at its
+# root). The kernel's installer clones from it into /srv/apps/<key> on the bos-srv-apps volume:
+#   sudo ./bos-app.sh plan  /opt/app-dev/myapp          # read-only
+#   sudo ./bos-app.sh apply /opt/app-dev/myapp          # first install (clones the checkout's commits)
+#   sudo ./bos-app.sh update myapp                      # after each commit on the host: pull, migrate, reconcile, restart
+# Its proofs run inside the container against the same PHP, Apache and PostgreSQL the installed copy uses:
+#   docker exec -w /opt/app-dev/myapp bos tests/phase2/run.sh
+services:
+  bos:
+    volumes:
+      - /home/dev/maludb-os-myapp:/opt/app-dev/myapp

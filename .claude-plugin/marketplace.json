@@ -1,0 +1,13 @@
+{
+  "name": "maludb-os-docker",
+  "owner": {
+    "name": "Edward Honour"
+  },
+  "plugins": [
+    {
+      "name": "maludb-os-docker",
+      "source": "./",
+      "description": "Build, change and operate Business OS applications and the kernel on the dockerized install (the bos container)"
+    }
+  ]
+}

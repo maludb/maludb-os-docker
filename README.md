@@ -73,7 +73,13 @@ config is re-rendered from env + persisted secrets, services re-enabled, apps re
   current value, `-` clears it; `--*-key-file` flags for automation), persists them in `bos.env`
   so container recreates keep them, applies them live, and restarts the agent runner when a
   provider key changed.
-- **Add HR/Projects later**: `docker exec bos php /var/www/bin/app_install.php apply https://github.com/maludb/maludb-os-hr.git --by <admin> --domain <domain> --scheme https --hire-agents --grant-standing-departments`
+- **Add HR/Projects or any application later**: `sudo ./bos-app.sh apply https://github.com/maludb/maludb-os-hr.git --hire-agents --grant-standing-departments`
+  — the kernel's installer inside the container, plus the two fixes this topology needs that the installer does not know
+  (`DB_HOST=pg-host`; a port for any `*_PORT` key left empty), a second apply to render the vhost from the fixed env, a restart of the
+  application's units, and a ledger of applied migrations. `bos-app.sh plan <source>` is the read-only preview; `bos-app.sh update <key>
+  [--ref TAG]` pulls an installed application, applies its new migrations, reconciles and restarts; `status`, `logs` and `list` inspect.
+  The raw form is `docker exec bos php /var/www/bin/app_install.php apply <source> --by <admin> --domain <domain> --scheme https …`,
+  followed by the fixes by hand (the plugin's `commands.md` lists them).
 - **Upgrade**: rebuild with a new `OS_CORE_REF` (`OS_CORE_REF=<tag> docker compose build`), then
   `docker compose up -d`. Volumes keep secrets and config; bos-init reconciles.
 - **Backups** (owner's duty): `pg_dump -Fc` on the host for `certstudy`, the app databases and the
@@ -81,6 +87,42 @@ config is re-rendered from env + persisted secrets, services re-enabled, apps re
   losing SECRETS_KEY/APP_TOTP_KEY makes encrypted data unreadable).
 - **TLS/DNS**: the container serves plain :80 vhosts (`<name>.<domain>`); TLS terminates at the
   proxy in front, DNS A records are the owner's.
+
+## Developing with Claude Code — the `maludb-os-docker` plugin
+
+This repository is also a Claude Code plugin (and its own marketplace) for anyone who builds or changes Business OS
+applications, or the kernel, against this dockerized install. Install it in Claude Code on the VM where the repository
+is cloned (or on a developer's machine):
+
+```
+/plugin marketplace add maludb/maludb-os-docker
+/plugin install maludb-os-docker@maludb-os-docker
+```
+
+Four skills, read by Claude Code when the work matches them:
+
+| Skill | Use it when | It says |
+|---|---|---|
+| `os-docker` | before any work on a dockerized install | the three layers — image (the kernel, disposable), volumes (secrets, `config/.env`, `/srv/apps`), host (PostgreSQL, `bos.env`) — and which a change lands in; every kernel command as `docker exec bos …`; the command book; symptoms and causes (`DB_HOST`, empty ports, the loopback `/etc/hosts` line that shadows an application's name under `https`, kernel migrations an image upgrade does not apply) |
+| `os-docker-new-app` | a new application for this install | build it in its own repository with `htmx-php-builder` + `maludb-os-integration`; what the manifest must declare for the container's installer (every port key, `port_env` on every MCP endpoint, `DB_HOST` from the env, `database.provision` for upgrades); where the proofs run (a bind-mounted checkout inside the container, `docker-compose.override.example.yml`); `bos-app.sh plan` → the owner's answers → `apply`; what stays the owner's (DNS, TLS, grants, hires) |
+| `os-docker-change-app` | a change to an installed application | the repository, never `/srv/apps/<key>`; an additive migration; `bos-app.sh update <key> [--ref]` — pull, new migrations, reconcile, restart; rollback by tag |
+| `os-docker-kernel` | a change to the kernel | a commit in `maludb-os-core`, an image built at that ref (`OS_CORE_REF`, or a fork via `OS_CORE_REPO`), `docker compose up -d`, the kernel migrations applied by resetting the once-marker, verification, rollback by tag |
+
+The two plugins that govern the code itself still govern it here: `htmx-php-builder`
+(`github.com/maludb/maludb-os-htmx-php-guidelines`: how an application is built) and `maludb-os-integration`
+(`github.com/maludb/maludb-os-integration`: how it fits the kernel). This plugin says only what the container changes.
+
+Layout:
+
+```
+.claude-plugin/plugin.json, marketplace.json     the plugin and this repository as its marketplace
+skills/os-docker/SKILL.md                        the topology, the rules; references/topology.md, commands.md, troubleshooting.md
+skills/os-docker-new-app/SKILL.md                a new application, installed into the container
+skills/os-docker-change-app/SKILL.md             a change to an installed application
+skills/os-docker-kernel/SKILL.md                 a kernel change is a new image
+bos-app.sh                                       plan | apply | update | status | logs | list — the installer wrapper the skills use
+docker-compose.override.example.yml              a developer's bind mount of one application's checkout at /opt/app-dev/<key>
+```
 
 ## Known trade-offs
 

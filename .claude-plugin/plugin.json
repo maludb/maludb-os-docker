@@ -1,0 +1,19 @@
+{
+  "name": "maludb-os-docker",
+  "version": "0.1.0",
+  "description": "Working on a MaluDB Business OS that runs as the dockerized install (maludb-os-docker: one systemd container `bos` on a MaluDB hosting VM, PostgreSQL and the MaluDB API on the host). Four skills: os-docker (the topology — what is in the image, on the volumes and on the host; the command book; troubleshooting), os-docker-new-app (build a new application in its own repository and install it into the container), os-docker-change-app (change an installed application: pull, migrate, reconcile, restart), os-docker-kernel (a kernel change is a new image). Ships bos-app.sh, the host-side wrapper around the kernel's installer that applies the container's topology fixes.",
+  "author": {
+    "name": "Edward Honour"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/maludb/maludb-os-docker",
+  "keywords": [
+    "business-os",
+    "docker",
+    "installer",
+    "maludb",
+    "mcp",
+    "php",
+    "systemd"
+  ]
+}

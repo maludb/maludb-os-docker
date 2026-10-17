@@ -49,7 +49,7 @@ another cause on a given VM.
 - **Cause:** bos-init renders `config/.env` with `set_kv` on the keys it knows; it copies `.env.example` only when the file does not
   exist yet (the volume keeps the first boot's file).
 - **Fix:** add the key by hand (`docker exec bos bash -c 'echo NEW_KEY=value >> /var/www/config/.env'`, owner `root:www-data` 640), then
-  restart what reads it (`certstudy-web`, or `apache2` for PHP — PHP reads per request). Propose the key to bos-init in maludb-os-docker.
+  restart what reads it (`maludb-os-web`, or `apache2` for PHP — PHP reads per request). Propose the key to bos-init in maludb-os-docker.
 
 ## The installer's port picker loops forever
 - **Cause:** `ss` missing (the picker treats any output, including "command not found", as "port taken"). The image installs `iproute2`

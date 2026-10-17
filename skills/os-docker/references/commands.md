@@ -7,12 +7,12 @@ All of these run on the host VM as root (`sudo`), from the clone of `maludb-os-d
 ```bash
 docker ps --filter name=bos                                   # up?
 docker exec bos systemctl status --no-pager                   # the whole container
-docker exec bos systemctl is-active apache2 certstudy-web certstudy-records-mcp certstudy-activity-mcp \
-    certstudy-actions-mcp certstudy-memory-mcp certstudy-agent-runner certstudy-activity-ingest.timer cron
+docker exec bos systemctl is-active apache2 maludb-os-web maludb-os-records-mcp maludb-os-activity-mcp \
+    maludb-os-actions-mcp maludb-os-memory-mcp maludb-os-agent-runner maludb-os-activity-ingest.timer cron
 docker exec bos cat /etc/business-os/install-report.txt       # the last boot's verification (no secrets in it)
 docker exec bos journalctl -u bos-init -n 200 --no-pager      # the installer/reconciler's log (also /var/log/bos-init.log)
-docker exec bos journalctl -u certstudy-agent-runner -f       # any kernel unit, live
-docker exec bos tail -50 /var/log/certstudy-cron.log
+docker exec bos journalctl -u maludb-os-agent-runner -f       # any kernel unit, live
+docker exec bos tail -50 /var/log/maludb-os-cron.log
 docker exec bos curl -fsS http://127.0.0.1:8080/api/v1/health # the PHP API
 docker exec bos curl -fsS http://127.0.0.1:8815/health        # the runner: harnesses, running runs
 sudo ./bos-app.sh list                                        # applications: the kernel's rows and /srv/apps

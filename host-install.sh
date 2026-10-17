@@ -286,6 +286,6 @@ cat <<EOF
   * Sign in at https://app.$DOMAIN (DNS + TLS proxy are yours; see the table above).
   * Provider keys not set at install:
         docker exec bos /var/www/docs/deploy/set-provider-key.sh   (see its usage)
-  * Backups: pg_dump -Fc on the host for: certstudy, app_helpdesk/app_spaces databases, and $MEM_DB.
+  * Backups: pg_dump -Fc on the host for: the kernel database (certstudy unless BOS_DB_NAME was set), app_helpdesk/app_spaces databases, and $MEM_DB.
     Docker volumes bos-etc + bos-config hold the encryption keys — back them up too.
 EOF

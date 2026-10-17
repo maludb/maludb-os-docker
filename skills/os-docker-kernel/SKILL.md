@@ -32,8 +32,8 @@ There is no live kernel code to edit: **a kernel change is a commit in `maludb-o
    and copies `.env.example` only on the first boot. Add the key to `container/bos-init.sh` (from `bos.env` or a generated secret) in the
    same change, or document the by-hand line; the same for `runner.env` and `web.env.local`.
 6. **A change to `docs/deploy/`** (the Apache site, the units, the cron lines) reaches the container through bos-init's rendering at every
-   boot (`apache-react-cutover.conf`, `certstudy-web.service.d-cutover.conf`, `crontab.example` — the last only in phase B, once) or at
-   image build (the `certstudy-*.service` copies). A new unit needs a line in the `Dockerfile`'s copy step and in bos-init's enable list.
+   boot (`apache-react-cutover.conf`, `maludb-os-web.service.d-cutover.conf`, `crontab.example` — the last only in phase B, once) or at
+   image build (the `maludb-os-*.service` copies). A new unit needs a line in the `Dockerfile`'s copy step and in bos-init's enable list.
 7. **Verify**: the report; `docker exec bos curl -fsS http://127.0.0.1:8080/api/v1/health`; the runner's `/health`; a sign-in at
    `app.<domain>`; what the change was for. Then `sudo ./bos-app.sh status <key>` for one application — the installer's plan must still read
    `done` (a kernel change to `app_install.php` or the registration shows here first).

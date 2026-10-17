@@ -37,6 +37,7 @@ docker ps --format '{{.Names}}' | grep -q '^bos$' || die "the bos container is n
 
 cfg() { grep -E "^$1=" "$BOSENV" | head -1 | cut -d= -f2-; }
 DOMAIN=$(cfg DOMAIN); ADMIN_EMAIL=$(cfg ADMIN_EMAIL); SCHEME=$(cfg SCHEME); SCHEME=${SCHEME:-https}
+KDB=$(cfg BOS_DB_NAME); KDB=${KDB:-certstudy}   # the kernel database (certstudy on hosts installed before the rename)
 [ -n "$DOMAIN" ] && [ -n "$ADMIN_EMAIL" ] || die "DOMAIN or ADMIN_EMAIL missing from $BOSENV"
 
 dx()  { docker exec bos "$@"; }                        # a command inside the container, as root
@@ -216,7 +217,7 @@ status)
     echo "checkout: $(dxq "git -c safe.directory='*' -C /srv/apps/$KEY describe --tags --always 2>/dev/null") on $(dxq "git -c safe.directory='*' -C /srv/apps/$KEY symbolic-ref -q --short HEAD 2>/dev/null || echo '(detached)'")"
     echo "units:"; dxq "systemctl --plain --no-legend list-units --all '$KEY-*' | awk '{printf \"   %-40s %s %s\n\", \$1, \$3, \$4}'"
     health "$KEY" || true
-    echo "kernel:  $(dxq "psql -d certstudy -Atc \"select 'application '||id||' '||status||' '||url from applications where app_key='$KEY'\"")"
+    echo "kernel:  $(dxq "psql -d $KDB -Atc \"select 'application '||id||' '||status||' '||url from applications where app_key='$KEY'\"")"
     echo "plan:"; installer "/srv/apps/$KEY" plan | awk 'NR>2 && NF {printf "   %s\n", $0}' | grep -vE '^\s+\$ ' | head -40
     ;;
 logs)
@@ -224,7 +225,7 @@ logs)
     dx journalctl -u "$KEY-*" --no-pager "$@";;
 list)
     echo "kernel applications:"
-    dxq "psql -d certstudy -Atc \"select '   '||coalesce(app_key,'-')||'  '||status||'  '||coalesce(url,'') from applications order by id\""
+    dxq "psql -d $KDB -Atc \"select '   '||coalesce(app_key,'-')||'  '||status||'  '||coalesce(url,'') from applications order by id\""
     echo "/srv/apps (bos-srv-apps volume):"
     dxq "for d in /srv/apps/*/; do k=\$(basename \$d); [ -f \$d/maludb-os.json ] && echo \"   \$k  \$(git -c safe.directory='*' -C \$d describe --tags --always 2>/dev/null)  \$(git -c safe.directory='*' -C \$d remote get-url origin 2>/dev/null)\"; done"
     echo "migration ledgers: $(dxq "ls $LEDGER_DIR 2>/dev/null | tr '\n' ' '")";;

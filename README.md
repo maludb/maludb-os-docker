@@ -39,7 +39,7 @@ the service). Long-term both belong in the hosting VM golden image.
 |---|---|
 | PostgreSQL 17 + maludb_core, MaluDB API (:8000) | **host VM** (pre-installed by hosting; untouched except a `bos_admin` role and one pg_hba block) |
 | Kernel (Apache/PHP :80 + :8080, Next.js :3000), 4 MCP servers, agent runner, cron, Claude CLI 2.1.278 | **container** (`bos`), systemd-managed |
-| `certstudy` + per-app databases, tenant memory | host PostgreSQL |
+| the kernel database (`certstudy` on existing hosts, `BOS_DB_NAME` otherwise) + per-app databases, tenant memory | host PostgreSQL |
 | Secrets, `config/.env`, `runner.env`, admin password, app checkouts, storage | named volumes (`bos-etc`, `bos-config`, `bos-storage`, `bos-srv-apps`, `bos-var-lib`) |
 
 The container reaches the host as `pg-host` (172.30.0.1, the pinned bosnet gateway). A psql shim
@@ -59,7 +59,7 @@ calls to the host — no upstream file is patched.
 ## First boot (bos-init)
 
 `bos-init.service` runs `docs/install.md` §3–§13 with the hosting-VM substitutions: memory
-schema check/enable, token mint, `certstudy` + 154 migrations (resumable), role passwords, the
+schema check/enable, token mint, the kernel database + 154 migrations (resumable), role passwords, the
 seven keys, Apache vhosts, services, super-admin bootstrap (`--password` generated, stored at
 `/etc/business-os/admin-password` inside the container), model registry, Installer + JEV agents,
 then `app_install.php apply` for Help Desk and Spaces. Re-runs on every boot as a reconcile:
@@ -83,7 +83,7 @@ config is re-rendered from env + persisted secrets, services re-enabled, apps re
 - **Upgrade**: rebuild with a new `OS_CORE_REF` (`OS_CORE_REF=<tag> docker compose build`), then
   `docker compose up -d`. Volumes keep secrets and config; bos-init reconciles and applies the kernel's new
   migrations (every boot, skipping what `init-state/migrations-applied` lists).
-- **Backups** (owner's duty): `pg_dump -Fc` on the host for `certstudy`, the app databases and the
+- **Backups** (owner's duty): `pg_dump -Fc` on the host for the kernel database (`certstudy` unless `BOS_DB_NAME` was set), the app databases and the
   tenant memory database, plus the `bos-etc`/`bos-config` volumes (they hold the encryption keys —
   losing SECRETS_KEY/APP_TOTP_KEY makes encrypted data unreadable).
 - **TLS/DNS**: the container serves plain :80 vhosts (`<name>.<domain>`); TLS terminates at the

@@ -36,7 +36,7 @@ Every kernel command is the documented command, inside the container, as root:
 ```bash
 docker exec bos php /var/www/bin/app_install.php plan https://github.com/maludb/maludb-os-hr.git --by <admin email> --domain <domain> --scheme https
 docker exec -u www-data bos php /var/www/bin/hire_application_agent.php --app hr --agent expert --by <admin email>
-docker exec bos systemctl status certstudy-agent-runner
+docker exec bos systemctl status maludb-os-agent-runner
 docker exec bos journalctl -u bos-init -n 100 --no-pager
 docker exec bos psql -d certstudy -Atc "select app_key, status from applications"     # the shim: root → bos_admin on the host
 ```

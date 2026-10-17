@@ -33,7 +33,9 @@ MALUDB_API_URL=${MALUDB_API_URL:-http://pg-host:8000}
 MODEL_KEY=${MODEL_KEY:-claude-fable-5-1}
 MODEL_NAME=${MODEL_NAME:-Claude Fable 5.1}
 MODEL_PROVIDER_ID=${MODEL_PROVIDER_ID:-$MODEL_KEY}
-DB=certstudy
+# Kernel database. Existing hosts were installed as "certstudy"; new installs may set
+# BOS_DB_NAME=maludb_os in bos.env (the kernel's own default since the identifier rename).
+DB=${BOS_DB_NAME:-certstudy}
 
 mkdir -p "$BOS" "$STATE"; install -d -m 700 "$SECRETS"
 
@@ -185,8 +187,8 @@ chown root:bos-runner "$RENV"; chmod 640 "$RENV"
 # Apache vhost + landing page + web drop-in (ephemeral image layer — rendered every boot; §6, §7)
 sed "s/subello\.com/$DOMAIN/g" /var/www/docs/deploy/apache-react-cutover.conf > /etc/apache2/sites-available/000-default.conf
 sed -i "s/subello\.com/$DOMAIN/g" /var/www/landing/index.html
-install -d /etc/systemd/system/certstudy-web.service.d
-sed "s/subello\.com/$DOMAIN/g" /var/www/docs/deploy/certstudy-web.service.d-cutover.conf > /etc/systemd/system/certstudy-web.service.d/cutover.conf
+install -d /etc/systemd/system/maludb-os-web.service.d
+sed "s/subello\.com/$DOMAIN/g" /var/www/docs/deploy/maludb-os-web.service.d-cutover.conf > /etc/systemd/system/maludb-os-web.service.d/cutover.conf
 systemctl daemon-reload
 
 # ======================= PHASE B — once ==========================================================
@@ -266,7 +268,7 @@ step_model_registry() { # install.md §10.2
 }
 
 step_cron() { # install.md §10.4
-    touch /var/log/certstudy-cron.log && chown www-data:www-data /var/log/certstudy-cron.log
+    touch /var/log/maludb-os-cron.log && chown www-data:www-data /var/log/maludb-os-cron.log
     crontab -u www-data /var/www/docs/deploy/crontab.example
 }
 
@@ -287,7 +289,7 @@ once php-check       step_php_check
 echo "== services"
 apache2ctl configtest || die "apache configtest failed"
 systemctl enable --now -q apache2 cron
-systemctl enable --now -q certstudy-web certstudy-records-mcp certstudy-activity-mcp certstudy-actions-mcp certstudy-memory-mcp certstudy-activity-ingest.timer certstudy-agent-runner
+systemctl enable --now -q maludb-os-web maludb-os-records-mcp maludb-os-activity-mcp maludb-os-actions-mcp maludb-os-memory-mcp maludb-os-activity-ingest.timer maludb-os-agent-runner
 
 for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null 2>&1 && break; [ "$i" = 30 ] && die "PHP API on 127.0.0.1:8080 not healthy"; sleep 2; done
 
@@ -352,8 +354,8 @@ REPORT=$BOS/install-report.txt
     echo "domain: $DOMAIN   app_env: $APP_ENV   admin: $ADMIN_EMAIL"
     echo
     echo "[services]"
-    systemctl is-active apache2 certstudy-web certstudy-records-mcp certstudy-activity-mcp \
-        certstudy-actions-mcp certstudy-memory-mcp certstudy-agent-runner certstudy-activity-ingest.timer cron | sort | uniq -c
+    systemctl is-active apache2 maludb-os-web maludb-os-records-mcp maludb-os-activity-mcp \
+        maludb-os-actions-mcp maludb-os-memory-mcp maludb-os-agent-runner maludb-os-activity-ingest.timer cron | sort | uniq -c
     echo
     echo "[endpoints]"
     echo "php api:    $(curl -fsS http://127.0.0.1:8080/api/v1/health 2>/dev/null | head -c 120)"

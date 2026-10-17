@@ -85,7 +85,7 @@ apply MALUMAIL_API_KEY   /var/www/config/.env
 
 if [ "$RESTART_RUNNER" = 1 ]; then
     note "restarting the agent runner"
-    docker exec bos systemctl restart certstudy-agent-runner || die "runner restart failed"
+    docker exec bos systemctl restart maludb-os-agent-runner || die "runner restart failed"
     sleep 3
     docker exec bos curl -fsS http://127.0.0.1:8815/health || die "runner not healthy after restart"
     echo

@@ -100,14 +100,14 @@ COPY container/psql-shim.sh /usr/local/bin/psql
 RUN chmod 0755 /usr/local/bin/psql && ln -s psql /usr/local/bin/createdb
 
 # --- Kernel systemd units (installed, NOT enabled — bos-init enables them once configured) ------
-RUN cp /var/www/docs/deploy/certstudy-web.service \
-       /var/www/docs/deploy/certstudy-records-mcp.service \
-       /var/www/docs/deploy/certstudy-activity-mcp.service \
-       /var/www/docs/deploy/certstudy-actions-mcp.service \
-       /var/www/docs/deploy/certstudy-memory-mcp.service \
-       /var/www/docs/deploy/certstudy-agent-runner.service \
-       /var/www/docs/deploy/certstudy-activity-ingest.service \
-       /var/www/docs/deploy/certstudy-activity-ingest.timer \
+RUN cp /var/www/docs/deploy/maludb-os-web.service \
+       /var/www/docs/deploy/maludb-os-records-mcp.service \
+       /var/www/docs/deploy/maludb-os-activity-mcp.service \
+       /var/www/docs/deploy/maludb-os-actions-mcp.service \
+       /var/www/docs/deploy/maludb-os-memory-mcp.service \
+       /var/www/docs/deploy/maludb-os-agent-runner.service \
+       /var/www/docs/deploy/maludb-os-activity-ingest.service \
+       /var/www/docs/deploy/maludb-os-activity-ingest.timer \
        /etc/systemd/system/
 
 # --- Apache internals that need no domain (install.md §6) ---------------------------------------

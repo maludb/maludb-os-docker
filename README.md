@@ -1,5 +1,13 @@
 # MaluDB Business OS — dockerized install
 
+> **Superseded (2026-11-05).** The supported install of the Business OS is MaluOS: the kernel is the
+> package `maludb-os-core` in the MaluOS server image and its first-boot component (a native port of
+> this repository's `bos-init`) provisions it, with no container. The operator's path is the
+> [handbook](https://github.com/maludb/maluos-docs). This repository stays for the Ubuntu 24.04 hosting
+> VMs that already run the image: the tags remain pullable and `bos-app.sh update` keeps working, but no
+> new installs should start here, and the repository will be archived once those VMs have moved.
+
+
 Installs the Business OS kernel plus the **Help Desk** and **Spaces** applications as a single
 systemd container on a MaluDB hosting VM, replacing the interactive runbook
 (`maludb-os-core/docs/install-on-maludb-hosting.md`) with one command:

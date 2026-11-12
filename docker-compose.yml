@@ -41,6 +41,7 @@ services:
       - bos-etc:/etc/business-os          # secrets, runner.env, web.env.local, admin password, init markers
       - bos-config:/var/www/config        # config/.env (volume is seeded from the image's .env.example)
       - bos-storage:/var/www/storage
+      - bos-landing:/var/www/landing      # the business's public page: the kernel's starter once, theirs from then on
       - bos-srv-apps:/srv/apps            # Help Desk + Spaces checkouts
       - bos-var-lib:/var/lib/business-os  # agent workspaces
 
@@ -56,5 +57,6 @@ volumes:
   bos-etc:
   bos-config:
   bos-storage:
+  bos-landing:
   bos-srv-apps:
   bos-var-lib:

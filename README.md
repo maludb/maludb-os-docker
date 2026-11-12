@@ -48,7 +48,7 @@ the service). Long-term both belong in the hosting VM golden image.
 | PostgreSQL 17 + maludb_core, MaluDB API (:8000) | **host VM** (pre-installed by hosting; untouched except a `bos_admin` role and one pg_hba block) |
 | Kernel (Apache/PHP :80 + :8080, Next.js :3000), 4 MCP servers, agent runner, cron, Claude CLI 2.1.278 | **container** (`bos`), systemd-managed |
 | the kernel database (`certstudy` on existing hosts, `BOS_DB_NAME` otherwise) + per-app databases, tenant memory | host PostgreSQL |
-| Secrets, `config/.env`, `runner.env`, admin password, app checkouts, storage | named volumes (`bos-etc`, `bos-config`, `bos-storage`, `bos-srv-apps`, `bos-var-lib`) |
+| Secrets, `config/.env`, `runner.env`, admin password, app checkouts, storage | named volumes (`bos-etc`, `bos-config`, `bos-storage`, `bos-landing` for the public page, `bos-srv-apps`, `bos-var-lib`) |
 
 The container reaches the host as `pg-host` (172.30.0.1, the pinned bosnet gateway). A psql shim
 at `/usr/local/bin/psql` redirects the kernel installers' local `runuser -u postgres -- psql`

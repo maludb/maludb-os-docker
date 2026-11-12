@@ -11,6 +11,7 @@ Written from `maludb-os-docker` at commit 92e5322 (2026-10-07: `Dockerfile`, `do
 | `/var/www` | the kernel (`maludb-os-core` at `OS_CORE_REF`), `composer install --no-dev` done, `web/.next` built at image build | image |
 | `/var/www/config` | `config/.env` — written by bos-init from `bos.env` + the persisted secrets at every boot (`set_kv`: known keys only) | volume `bos-config` |
 | `/var/www/storage` | uploads | volume `bos-storage` |
+| `/var/www/landing` | the business's public page (the kernel's starter once, theirs after) | volume `bos-landing` |
 | `/var/www/mcp/venv` | the four MCP servers' and the runner's venv | image |
 | `/var/www/web/.env.local` → `/etc/business-os/web.env.local` | `API_BASE_URL`, `LOGIN_URL`, `WEB_INTERNAL_KEY` | volume `bos-etc` |
 | `/etc/business-os/` | `secrets/` (every generated key and role password), `runner.env`, `pg-client.env`, `pgpass-root`, `pgpass-postgres`, `admin-password` (until shredded), `init-state/` (phase-B markers, `migrations-applied`), `install-report.txt`, `app-migrations/<key>` (bos-app.sh's ledgers) | volume `bos-etc` |
@@ -71,7 +72,9 @@ cannot reach an application").
 - **Phase A, every boot:** pg-client env and pgpass files; volume permissions re-asserted; the `/etc/hosts` lines; wait for the host's
   PostgreSQL and MaluDB API; secrets loaded or generated under `/etc/business-os/secrets/`; the MaluDB token reused or minted;
   `config/.env`, `web.env.local`, `runner.env` rendered (`set_kv` on the known keys — a key the kernel adds later is NOT merged from
-  `.env.example`); the Apache site, the landing page and the web drop-in rendered from `docs/deploy/` with the domain filled in.
+  `.env.example`); the Apache site and the web drop-in rendered from `docs/deploy/` with the domain filled in; the landing page
+  copied ONCE from the kernel's `landing-starter/` (Bootstrap 5.3 + htmx, a page that says it is a starter) to the `bos-landing` volume
+  at `/var/www/landing` with the domain filled in — the business's own from then on, edited in the volume, never overwritten by a new image.
 - **Phase B (markers in `init-state/`, once each — except the migrations):** memory schema, `CREATE DATABASE certstudy`, the
   **migrations not yet in `migrations-applied`, at every boot**, role passwords, a PHP check; services enabled and started; the super-admin, the model registry row, cron,
   the Installer and the JEV prompt writer hired; a model probe when `ANTHROPIC_API_KEY` is set.

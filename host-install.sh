@@ -148,7 +148,7 @@ ask_key MALUMAIL_API_KEY   "MaluMail API key — invitations, password resets, n
 cat <<EOF
 
 DNS reminder — these names need A records pointing at $PUBLIC_IP (TLS at the proxy in front):
-    $DOMAIN  www.$DOMAIN        the landing page
+    $DOMAIN  www.$DOMAIN        the landing page (a starter until you replace it: the bos-landing volume)
     app.$DOMAIN                 sign-in and the launcher
     os.$DOMAIN                  the operating system (super-admins)
     helpdesk.$DOMAIN            Help Desk

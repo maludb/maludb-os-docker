@@ -184,9 +184,20 @@ set_kv "$RENV" RUNNER_SCHEDULER on
 [ -n "${OPENROUTER_API_KEY:-}" ] && set_kv "$RENV" OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
 chown root:bos-runner "$RENV"; chmod 640 "$RENV"
 
-# Apache vhost + landing page + web drop-in (ephemeral image layer — rendered every boot; §6, §7)
+# Apache vhost + web drop-in (ephemeral image layer — rendered every boot; §6, §7); the landing page once (a volume)
 sed "s/subello\.com/$DOMAIN/g" /var/www/docs/deploy/apache-react-cutover.conf > /etc/apache2/sites-available/000-default.conf
-sed -i "s/subello\.com/$DOMAIN/g" /var/www/landing/index.html
+# The business's public page lives on the bos-landing volume. A kernel with landing-starter/ (2026-11-12 on): the starter
+# (Bootstrap 5.3 + htmx, a page that says it is a starter) is copied there once with the domain, and is the business's from
+# then on — edit the volume's files; a new image never overwrites them. An older kernel: its own page, the domain filled in.
+if [ -d /var/www/landing-starter ]; then
+  if [ ! -f /var/www/landing/index.html ]; then
+    install -d /var/www/landing && cp -r /var/www/landing-starter/. /var/www/landing/
+    grep -rlZ __DOMAIN__ /var/www/landing | xargs -0 -r sed -i "s/__DOMAIN__/$DOMAIN/g"
+    echo "landing: the starter page copied to the bos-landing volume for $DOMAIN"
+  fi
+elif [ -f /var/www/landing/index.html ]; then
+  sed -i "s/subello\.com/$DOMAIN/g" /var/www/landing/index.html
+fi
 install -d /etc/systemd/system/maludb-os-web.service.d
 sed "s/subello\.com/$DOMAIN/g" /var/www/docs/deploy/maludb-os-web.service.d-cutover.conf > /etc/systemd/system/maludb-os-web.service.d/cutover.conf
 systemctl daemon-reload
